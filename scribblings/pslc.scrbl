@@ -7,4 +7,4 @@
 
 @defmodule[pslc]
 
-Package Description Here
+Python-style list conprehension.

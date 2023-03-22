@@ -1,4 +1,5 @@
 #lang racket/base
+(require (for-syntax racket/base racket/match) racket/list)
 
 (module+ test
   (require rackunit))
@@ -25,26 +26,59 @@
 
 ;; Code here
 
+(define-syntax (#%pslc-datum stx)
+  (syntax-case stx ()
+    ((_ . d)
+     (let/cc ret
+       (let ((datum (syntax->datum #'d)))
+         (datum->syntax
+          #'stx
+          (match datum
+            ((list 'quote (list expr 'for var 'in collection))
+             (list 'map (list 'lambda (list var) expr) collection))
+            ((list 'quote (list expr 'for var 'in collection 'if test token ...))
+             (define conds (let loop ((token token) (state 'and) (result null))
+                             (cond ((null? token) (if (not state) (reverse result) #'d))
+                                   (else (loop (cdr token)
+                                               (cond ((and (eq? (car token) 'and) (not state)) 'and)
+                                                     ((and (not (eq? (car token) 'and))
+                                                           state)
+                                                      #f)
+                                                     (else (ret #'d)))
+                                               (if (eq? (car token) 'and)
+                                                   result
+                                                   (cons (car token) result)))))))
+             (list 'filter-map
+                   (list 'lambda
+                         (list var)
+                         (list 'if (append (list 'and test) conds) expr #f))
+                   collection))
+            (else (ret #'d)))))))))
 
+(define-syntax-rule (#%pslc-module-begin body ...)
+  (#%module-begin
+   body
+   ...))
+
+(define (read-syntax src port)
+  (let loop ((r null))
+    (define e (read port))
+    (cond ((eof-object? e)
+           (datum->syntax #f (append (list 'module (gensym 'pslc) 'pslc)
+                                     (reverse r))))
+          (else (loop (cons e r))))))
+
+(provide read-syntax
+         (rename-out (#%pslc-datum #%datum)
+                     (#%pslc-module-begin #%module-begin))
+         require)
 
 (module+ test
-  ;; Any code in this `test` submodule runs when this file is run using DrRacket
-  ;; or with `raco test`. The code here does not run when this file is
-  ;; required by another module.
-
-  (check-equal? (+ 2 2) 4))
-
-(module+ main
-  ;; (Optional) main submodule. Put code here if you need it to be executed when
-  ;; this file is run using DrRacket or the `racket` executable.  The code here
-  ;; does not run when this file is required by another module. Documentation:
-  ;; http://docs.racket-lang.org/guide/Module_Syntax.html#%28part._main-and-test%29
-
-  (require racket/cmdline)
-  (define who (box "world"))
-  (command-line
-    #:program "my-program"
-    #:once-each
-    [("-n" "--name") name "Who to say hello to" (set-box! who name)]
-    #:args ()
-    (printf "hello ~a~n" (unbox who))))
+  (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3)])
+                (list 1 2 3))
+  (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v)])
+                (list 1 3))
+  (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v) and (zero? (sub1 v))])
+                (list 1))
+  (check-eq? (#%pslc-datum . 'a)
+             'a))
