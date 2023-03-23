@@ -30,7 +30,8 @@
   (syntax-case stx ()
     ((_ . d)
      (let/cc ret
-       (let ((datum (syntax->datum #'d)))
+       (let ((datum (syntax->datum #'d))
+             (orig (lambda (s) (datum->syntax #'stx (cons '#%datum (syntax-e s))))))
          (datum->syntax
           #'stx
           (match datum
@@ -39,13 +40,13 @@
             ((list 'quote (list expr 'for var 'in collection 'if test token ...))
              (define conds (let loop ((token token) (state #f) (result null))
                              (cond ((null? token) (cond ((not state) (reverse result))
-                                                        (else (ret #'d))))
+                                                        (else (ret (orig #'d)))))
                                    (else (loop (cdr token)
                                                (cond ((and (eq? (car token) 'and) (not state)) 'and)
                                                      ((and (not (eq? (car token) 'and))
                                                            state)
                                                       #f)
-                                                     (else (ret #'d)))
+                                                     (else (ret (orig #'d))))
                                                (if (eq? (car token) 'and)
                                                    result
                                                    (cons (car token) result)))))))
@@ -54,7 +55,7 @@
                          (list var)
                          (list 'if (append (list 'and test) conds) expr #f))
                    collection))
-            (else (ret #'d)))))))))
+            (else (ret (orig #'d))))))))))
 
 (define-syntax-rule (#%pslc-module-begin body ...)
   (#%module-begin
