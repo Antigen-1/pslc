@@ -82,11 +82,19 @@
          (except-out (all-from-out racket/base) #%module-begin #%datum quote))
 
 (module+ test
-  (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3)])
-                (list 1 2 3))
-  (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v)])
-                (list 1 3))
-  (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v) and (zero? (sub1 v))])
-                (list 1))
-  (check-eq? (#%pslc-datum . a)
-             'a))
+  (test-case
+      "#%pslc-datum"
+    (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3)])
+                  (list 1 2 3))
+    (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v)])
+                  (list 1 3))
+    (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v) and (zero? (sub1 v))])
+                  (list 1))
+    (check-eq? (#%pslc-datum . a)
+               'a))
+  (test-case
+      "read-syntax"
+    (check-match (syntax->datum (read-syntax #f (open-input-string "(define a ''[])")))
+                 (list 'module modname (list 'file (regexp "^.*main\\.rkt$"))
+                       (list 'define 'a '''[])))))
+  
