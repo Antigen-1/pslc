@@ -1,3 +1,3 @@
 pslc
 ====
-README text here.
+Python-style list comprehension
