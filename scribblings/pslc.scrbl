@@ -7,4 +7,4 @@
 
 @defmodule[pslc]
 
-Python-style list conprehension.
+Python-style list comprehension.
