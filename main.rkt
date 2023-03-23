@@ -77,7 +77,7 @@
          (rename-out (#%pslc-datum #%datum)
                      (#%pslc-module-begin #%module-begin)
                      (pslc-quote quote))
-         (except-out (all-from-out racket/base) #%module-begin #%datum read-syntax quote))
+         (except-out (all-from-out racket/base) #%module-begin #%datum quote))
 
 (module+ test
   (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3)])
