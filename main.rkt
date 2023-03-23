@@ -1,5 +1,7 @@
 #lang racket/base
-(require (for-syntax racket/base racket/match) racket/list)
+(require (for-syntax racket/base racket/match) racket/list racket/runtime-path)
+
+(define-runtime-path lib "main.rkt")
 
 (module+ test
   (require rackunit))
@@ -69,7 +71,7 @@
   (let loop ((r null))
     (define e (read port))
     (cond ((eof-object? e)
-           (datum->syntax #f (append (list 'module (gensym 'pslc) 'pslc)
+           (datum->syntax #f (append (list 'module (gensym 'pslc) (path->string (path->complete-path lib)))
                                      (reverse r))))
           (else (loop (cons e r))))))
 
