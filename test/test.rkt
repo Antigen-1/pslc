@@ -1,5 +1,5 @@
 #lang reader "../main.rkt"
-(require racket/unit)
+(require rackunit)
 
 (check-equal? ''[v for v in (range 0 1000) if (zero? (remainder v 7))]
               (let loop ((s 0) (r null))
