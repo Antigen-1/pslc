@@ -57,6 +57,9 @@
                    collection))
             (else (ret (orig #'d))))))))))
 
+(define-syntax-rule (pslc-quote o)
+  (#%pslc-datum . o))
+
 (define-syntax-rule (#%pslc-module-begin body ...)
   (#%module-begin
    body
@@ -72,8 +75,9 @@
 
 (provide read-syntax
          (rename-out (#%pslc-datum #%datum)
-                     (#%pslc-module-begin #%module-begin))
-         require)
+                     (#%pslc-module-begin #%module-begin)
+                     (pslc-quote quote))
+         (except-out (all-from-out racket/base) #%module-begin #%datum read-syntax quote))
 
 (module+ test
   (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3)])
