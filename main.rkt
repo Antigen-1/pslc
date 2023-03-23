@@ -71,7 +71,7 @@
   (let loop ((r null))
     (define e (read port))
     (cond ((eof-object? e)
-           (datum->syntax #f (append (list 'module (gensym 'pslc) (path->string (path->complete-path lib)))
+           (datum->syntax #f (append (list 'module (gensym 'pslc) (list 'file (path->string (path->complete-path lib))))
                                      (reverse r))))
           (else (loop (cons e r))))))
 
