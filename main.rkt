@@ -31,7 +31,7 @@
     ((_ . d)
      (let/cc ret
        (let ((datum (syntax->datum #'d))
-             (orig (lambda (s) (datum->syntax #'stx (cons '#%datum (syntax-e s))))))
+             (orig (lambda (s) (datum->syntax #'stx (cons '#%datum s)))))
          (datum->syntax
           #'stx
           (match datum
