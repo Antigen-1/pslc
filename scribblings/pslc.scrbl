@@ -1,6 +1,6 @@
 #lang scribble/manual
 @require[@for-label[pslc
-                    racket/base]]
+                    (except-in racket/base read-syntax)]]
 
 @title{pslc}
 @author{hin}
