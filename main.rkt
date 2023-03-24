@@ -1,5 +1,5 @@
 #lang racket/base
-(require (for-syntax racket/base racket/match) racket/list racket/runtime-path)
+(require (for-syntax racket/base) racket/list racket/runtime-path)
 
 (define-runtime-path lib "main.rkt")
 
@@ -28,36 +28,16 @@
 
 ;; Code here
 
+;;I'll not strictly abide by the python syntax due to its complicacy
 (define-syntax (#%pslc-datum stx)
-  (syntax-case stx ()
-    ((_ . d)
-     (let/cc ret
-       (let ((datum (syntax->datum #'d))
-             (orig (lambda (s) (datum->syntax #'stx (cons '#%datum s)))))
-         (datum->syntax
-          #'stx
-          (match datum
-            ((list 'quote (list expr 'for var 'in collection))
-             (list 'map (list 'lambda (list var) expr) collection))
-            ((list 'quote (list expr 'for var 'in collection 'if test token ...))
-             (define conds (let loop ((token token) (state #f) (result null))
-                             (cond ((null? token) (cond ((not state) (reverse result))
-                                                        (else (ret (orig #'d)))))
-                                   (else (loop (cdr token)
-                                               (cond ((and (eq? (car token) 'and) (not state)) 'and)
-                                                     ((and (not (eq? (car token) 'and))
-                                                           state)
-                                                      #f)
-                                                     (else (ret (orig #'d))))
-                                               (if (eq? (car token) 'and)
-                                                   result
-                                                   (cons (car token) result)))))))
-             (list 'filter-map
-                   (list 'lambda
-                         (list var)
-                         (list 'if (append (list 'and test) conds) expr #f))
-                   collection))
-            (else (ret (orig #'d))))))))))
+  (syntax-case stx (for in if and)
+    ((_ . (expr for var in collection))
+     #'(map (lambda (var) expr) collection))
+    ((_ .  (expr for var in collection if test))
+     #'(filter-map (lambda (var) (if test expr #f)) collection))
+    ((_ . (expr for var in collection if and test other ...))
+     #'(filter-map (lambda (var) (if (and test other ...) expr #f)) collection))
+    ((_ . d) (datum->syntax #'stx (cons '#%datum #'d)))))
 
 (define-syntax-rule (pslc-quote o)
   (#%pslc-datum . o))
@@ -84,11 +64,11 @@
 (module+ test
   (test-case
       "#%pslc-datum"
-    (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3)])
+    (check-equal? (#%pslc-datum . [v for v in (list 1 2 3)])
                   (list 1 2 3))
-    (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v)])
+    (check-equal? (#%pslc-datum . [v for v in (list 1 2 3) if (odd? v)])
                   (list 1 3))
-    (check-equal? (#%pslc-datum . '[v for v in (list 1 2 3) if (odd? v) and (zero? (sub1 v))])
+    (check-equal? (#%pslc-datum . [v for v in (list 1 2 3) if and (odd? v) (zero? (sub1 v))])
                   (list 1))
     (check-eq? (#%pslc-datum . a)
                'a))
