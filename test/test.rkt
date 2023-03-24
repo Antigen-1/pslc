@@ -1,5 +1,5 @@
 #lang reader "../main.rkt"
-(require rackunit)
+(require rackunit racket/list)
 
 (test-case
     "overall"
