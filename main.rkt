@@ -1,10 +1,5 @@
 #lang racket/base
-(require (for-syntax racket/base) racket/list racket/runtime-path)
-
-(define-runtime-path lib "main.rkt")
-
-(module+ test
-  (require rackunit))
+(require (for-syntax racket/base syntax/parse))
 
 ;; Notice
 ;; To install (from within the package directory):
@@ -28,53 +23,38 @@
 
 ;; Code here
 
+;;Literals
+(define-syntax in #t)
+
+;;Syntax classes
+(begin-for-syntax
+  (define-syntax-class iterator
+    #:description "iterator"
+    #:literals (for if in)
+    (pattern (body:expr for var:id in sequence:expr) #:with cond #'#t)
+    (pattern (body:expr for var:id in sequence:expr if cond:expr))))
+
 ;;I'll not strictly abide by the python syntax due to its complicacy
 (define-syntax (#%pslc-datum stx)
-  (syntax-case stx (for in if and)
-    ((_ . (expr for var in collection))
-     #'(map (lambda (var) expr) collection))
-    ((_ .  (expr for var in collection if test))
-     #'(filter-map (lambda (var) (if test expr #f)) collection))
-    ((_ . (expr for var in collection if and test other ...))
-     #'(filter-map (lambda (var) (if (and test other ...) expr #f)) collection))
-    ((_ . d) (datum->syntax #'stx (cons '#%datum #'d)))))
+  (syntax-parse stx
+    ((_ . iter:iterator)
+     #'(reverse
+        (for/fold ((ac null)) ((iter.var iter.sequence))
+          (if iter.cond (cons iter.body ac) ac))))
+    ((_ . other) #''other)))
 
+;;Alias
 (define-syntax-rule (pslc-quote o)
   (#%pslc-datum . o))
 
-(define-syntax-rule (#%pslc-module-begin body ...)
-  (#%module-begin
-   body
-   ...))
+(provide (rename-out (#%pslc-datum #%datum) (pslc-quote quote))
+         in
+         (except-out (all-from-out racket/base) #%datum quote))
 
-(define (read-syntax src port)
-  (let loop ((r null))
-    (define e (read port))
-    (cond ((eof-object? e)
-           (datum->syntax #f (append (list 'module (gensym 'pslc) (list 'file (path->string (path->complete-path lib))))
-                                     (reverse r))))
-          (else (loop (cons e r))))))
-
-(provide read-syntax
-         (rename-out (#%pslc-datum #%datum)
-                     (#%pslc-module-begin #%module-begin)
-                     (pslc-quote quote))
-         (except-out (all-from-out racket/base) #%module-begin #%datum quote))
-
-(module+ test
-  (test-case
-      "#%pslc-datum"
-    (check-equal? (#%pslc-datum . [v for v in (list 1 2 3)])
-                  (list 1 2 3))
-    (check-equal? (#%pslc-datum . [v for v in (list 1 2 3) if (odd? v)])
-                  (list 1 3))
-    (check-equal? (#%pslc-datum . [v for v in (list 1 2 3) if and (odd? v) (zero? (sub1 v))])
-                  (list 1))
-    (check-eq? (#%pslc-datum . a)
-               'a))
-  (test-case
-      "read-syntax"
-    (check-match (syntax->datum (read-syntax #f (open-input-string "(define a ''[])")))
-                 (list 'module modname (list 'file (regexp "^.*main\\.rkt$"))
-                       (list 'define 'a '''[])))))
+(module* test (submod "..")
+  (require rackunit)
   
+  (check-equal? '[(add1 v) for v in (list 1 2 3)] (list 2 3 4))
+  (check-equal? '[v for v in (list 1 2 3) if (odd? v)] (list 1 3))
+  (check-equal? '[v for v in (list 1 2 3) if (and (odd? v) (zero? (sub1 v)))] (list 1))
+  (check-eq? 'a (string->symbol "a")))
